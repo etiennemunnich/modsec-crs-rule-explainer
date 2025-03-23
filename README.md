@@ -1,6 +1,6 @@
 # ModSecurity Rule Analyzer
 
-[![Python application](https://github.com/yourusername/modsecurity-rule-analyzer/actions/workflows/python-app.yml/badge.svg)](https://github.com/yourusername/modsecurity-rule-analyzer/actions/workflows/python-app.yml)
+[![Python application](https://github.com/etiennemunnich/modsecurity-rule-analyzer/actions/workflows/python-app.yml/badge.svg)](https://github.com/etiennemunnich/modsecurity-rule-analyzer/actions/workflows/python-app.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Security Policy](https://img.shields.io/badge/security-policy-brightgreen.svg)](SECURITY.md)
 [![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg)](CONTRIBUTING.md)
