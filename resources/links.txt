@@ -1,0 +1,42 @@
+CRS Versions:
+https://github.com/coreruleset/coreruleset/tags
+
+CoreRuleset:
+https://coreruleset.org/docs/2-how-crs-works/2-1-anomaly_scoring/
+https://github.com/coreruleset/coreruleset
+
+Core Rule Set Rules:
+https://github.com/coreruleset/coreruleset/tree/main/rules
+
+ModSecurity:
+https://modsecurity.org
+v3: https://github.com/owasp-modsecurity/ModSecurity/wiki/Compilation-recipes-for-v3.x
+v2: https://github.com/owasp-modsecurity/ModSecurity/wiki/Reference-Manual-%28v2.x%29
+
+Regex:
+https://github.com/coreruleset/regexp-assemble-syntax
+https://coreruleset.org/docs/6-development/6-3-assembling-regular-expressions/
+
+LLMs:
+
+Perplexity:
+https://docs.perplexity.ai/guides/model-cards
+https://docs.perplexity.ai/api-reference/chat-completions
+
+OpenAI:
+https://github.com/openai/openai-python
+https://platform.openai.com/docs/api-reference/introduction
+
+Grok:
+https://docs.x.ai/docs/tutorial
+https://docs.x.ai/docs/models?cluster=us-east-1
+
+Gemini
+https://ai.google.dev/gemini-api/docs/thinking
+https://ai.google.dev/gemini-api/docs/file-prompting-strategies?lang=python#prompting-with-videos
+
+Claude
+https://docs.anthropic.com/en/api/getting-started
+
+AWS Bedrock
+https://docs.anthropic.com/en/api/claude-on-amazon-bedrock

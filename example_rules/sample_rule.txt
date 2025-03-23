@@ -1,0 +1,12 @@
+SecRule REQUEST_HEADERS:User-Agent "@rx (?:acunetix|analyze|audit|black|scan|nikto)" \
+    "id:949110,\
+    phase:2,\
+    block,\
+    t:none,t:lowercase,\
+    log,\
+    msg:'Scanner Detection - Security Scanner Identified',\
+    logdata:'%{MATCHED_VAR}',\
+    tag:'scanner',\
+    severity:'CRITICAL',\
+    ver:'OWASP_CRS/3.3.2',\
+    setvar:'tx.anomaly_score_pl1=+%{tx.critical_anomaly_score}'"
