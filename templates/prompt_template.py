@@ -6,7 +6,7 @@ Rule: {rule}
 Please provide your analysis in the following markdown format:
 
 ## Rule Overview
-[150 words or less: Provide a brief overview of what the rule does, include TTPs and what risks it mitigates, etc.]
+[150 words or less: Provide a brief overview of what the rule does, include TTPs, OWASP Top 10/API Top 10 CVE, CWE, known exploit detail and what risks it mitigates etc.]
 
 ## Technical Analysis
 Table:
@@ -44,13 +44,13 @@ Table format:
 - provide a brief explanation of why you think these changes would be beneficial
 
 ## Test case
+[Provide 2x tests to show the rule is working as expected; one test should be a false positive and the other should be a true positive.
+The bash curl test should start with 'curl -H "x-format-output: txt-matched-rules" https://sandbox.coreruleset.org/'.]
 
 ```bash
 [Add curl test here]
 ```
 
-
-
 ## Summary
-[300 words or less: Summary of rule and any other relevant information or considerations]
+[300 words or less: Summary of rule and any other relevant information or considerations. Link to OWASP CRS and other OWASP protect documentation where needed]
 """

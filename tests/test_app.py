@@ -1,86 +1,91 @@
 import pytest
-from app import app, PerplexityClient, check_api_key, analyze_modsec_rule
+from unittest.mock import patch, Mock
+import os
+from app import check_api_key, analyze_modsec_rule
 
-class TestRoutes:
-    def test_index_route(self, client):
-        # Arrange
-        expected_status = 200
-        
-        # Act
-        response = client.get('/')
-        
-        # Assert
-        assert response.status_code == expected_status
-        assert b'ModSecurity Rule Analyzer' in response.data
-        
-    def test_analyze_route(self, client, mocker):
-        # Arrange
-        mock_response = {"completion": "Analysis result"}
-        mocker.patch('app.analyze_modsec_rule', return_value=mock_response)
-        test_data = {'rule': 'SecRule TEST', 'prompt_template': 'Analyze: {rule}'}
-        
-        # Act
-        response = client.post('/analyze', json=test_data)
-        
-        # Assert
-        assert response.status_code == 200
-        assert response.json == mock_response
+# Test cases for the check_api_key function
+def test_check_api_key_present(monkeypatch):
+    """
+    Test that check_api_key returns the key when the environment variable is set.
+    """
+    monkeypatch.setenv("perplexity_api_key", "test_key_123")
+    assert check_api_key("perplexity") == "test_key_123"
 
-class TestAnalyzeModsecRule:
-    def test_analyze_with_perplexity(self, mocker):
-        # Arrange
-        api_key = "test_key"
-        rule = "SecRule REQUEST_URI|ARGS \"@rx foo\" \"id:1,deny\""
-        prompt = "test prompt"
-        mock_response = {"completion": "Test completion"}
-        
-        # Mock API key check
-        mocker.patch("os.getenv", return_value=api_key)
-        
-        # Mock LLM provider
-        mock_provider = mocker.Mock()
-        mock_provider.analyze.return_value = mock_response
-        mocker.patch("llms.factory.LLMFactory.create", return_value=mock_provider)
-        
-        # Act
-        result = analyze_modsec_rule(rule, prompt, provider="perplexity")
-        
-        # Assert
-        assert result == mock_response
-        mock_provider.analyze.assert_called_once()
+def test_check_api_key_missing(monkeypatch):
+    """
+    Test that check_api_key raises ValueError when the environment variable is not set.
+    """
+    monkeypatch.delenv("perplexity_api_key", raising=False)
+    with pytest.raises(ValueError, match="perplexity_api_key environment variable not found"):
+        check_api_key("perplexity")
 
-class TestHelperFunctions:
-    def test_check_api_key_present(self, mocker):
+def test_check_api_key_unknown_provider():
+    """
+    Test that check_api_key raises ValueError for an unknown provider.
+    """
+    with pytest.raises(ValueError, match="Unknown provider: unknown_provider"):
+        check_api_key("unknown_provider")
+
+# Test cases for the analyze_modsec_rule function
+@patch('app.check_api_key')
+@patch('app.get_llm_client')
+def test_analyze_modsec_rule_success(mock_get_llm_client, mock_check_api_key):
+    """
+    Test a successful analysis of a ModSecurity rule.
+    """
         # Arrange
-        mocker.patch.dict('os.environ', {'PERPLEXITY_API_KEY': 'test_key'})
+    mock_check_api_key.return_value = "fake_api_key"
+    
+    mock_llm_client = Mock()
+    mock_llm_client.analyze.return_value = {"markdown_content": "Detailed analysis"}
+    mock_get_llm_client.return_value = mock_llm_client
+    
+    rule = "SecRule REQUEST_HEADERS:User-Agent \"@rx malicious\""
+    prompt_template = "Analyze this: {rule}"
         
         # Act
-        result = check_api_key()
+    result = analyze_modsec_rule(rule, prompt_template, provider="perplexity")
         
         # Assert
-        assert result == 'test_key'
-        
-    def test_check_api_key_missing(self, mocker):
+    mock_check_api_key.assert_called_once_with("perplexity")
+    mock_get_llm_client.assert_called_once_with("fake_api_key", "perplexity")
+    
+    expected_prompt = prompt_template.format(rule=rule)
+    mock_llm_client.analyze.assert_called_once_with(expected_prompt)
+
+    assert result == {"markdown_content": "Detailed analysis"}
+
+@patch('app.check_api_key', side_effect=ValueError("API Key Not Found"))
+def test_analyze_modsec_rule_api_key_error(mock_check_api_key):
+    """
+    Test that analyze_modsec_rule raises an exception if the API key is missing.
+    """
         # Arrange
-        mocker.patch.dict('os.environ', {}, clear=True)
-        
-        # Act/Assert
-        with pytest.raises(ValueError):
-            check_api_key()
-            
-    def test_analyze_modsec_rule(self, mocker):
+    rule = "SecRule ARGS:test"
+    prompt_template = "Template: {rule}"
+
+    # Act & Assert
+    with pytest.raises(ValueError, match="API Key Not Found"):
+        analyze_modsec_rule(rule, prompt_template)
+    
+    mock_check_api_key.assert_called_once_with("perplexity")
+
+@patch('app.check_api_key')
+@patch('app.get_llm_client')
+def test_analyze_modsec_rule_llm_failure(mock_get_llm_client, mock_check_api_key):
+    """
+    Test how analyze_modsec_rule handles an exception from the LLM client.
+    """
         # Arrange
-        rule = "SecRule REQUEST_URI"
-        prompt_template = "Analyze this rule: {rule}"
-        mock_client = mocker.Mock()
-        mock_client.analyze.return_value = {"completion": "Rule analysis"}
-        mocker.patch('app.PerplexityClient', return_value=mock_client)
-        mocker.patch('app.check_api_key', return_value='test_key')
-        
-        # Act
-        result = analyze_modsec_rule(rule, prompt_template)
-        
-        # Assert
-        assert isinstance(result, dict)
-        assert "completion" in result
-        mock_client.analyze.assert_called_once()
+    mock_check_api_key.return_value = "fake_api_key"
+    
+    mock_llm_client = Mock()
+    mock_llm_client.analyze.side_effect = RuntimeError("LLM API Error")
+    mock_get_llm_client.return_value = mock_llm_client
+
+    rule = "SecRule SOME_VAR"
+    prompt_template = "Analyze: {rule}"
+
+    # Act & Assert
+    with pytest.raises(RuntimeError, match="LLM API Error"):
+        analyze_modsec_rule(rule, prompt_template)

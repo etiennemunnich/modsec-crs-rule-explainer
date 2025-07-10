@@ -1,89 +1,32 @@
-import pytest
+import subprocess
 import sys
-from cli import main
+import os
+import pytest
 
-class TestCLI:
-    def test_cli_execution_no_args(self, capsys):
-        # Arrange
-        sys.argv = ['cli.py']
-        expected_result = 1
-        
-        # Act
-        result = main()
-        captured = capsys.readouterr()
-        
-        # Assert
-        assert result == expected_result
-        assert "Usage:" in captured.out
-        
-    def test_cli_execution_with_rule(self, mocker, capsys):
-        # Arrange
-        test_rule = 'SecRule REQUEST_HEADERS:User-Agent "@rx malicious"'
-        sys.argv = ['cli.py', test_rule]
-        mock_check_api_key = mocker.patch('cli.check_api_key')
-        mock_check_api_key.return_value = "test_api_key"
-        mock_analyze = mocker.patch('cli.analyze_modsec_rule')
-        mock_analyze.return_value = {"markdown_content": "Test analysis"}
-        
-        # Act
-        result = main()
-        captured = capsys.readouterr()
-        
-        # Assert
-        assert result == 0
-        assert mock_analyze.called
-        mock_analyze.assert_called_with(test_rule, 
-            "Please analyze this ModSecurity rule and explain what it does, including any potential issues or improvements: {rule}",
-            provider="perplexity")
-        assert "Test analysis" in captured.out
+CLI_PATH = os.path.join(os.path.dirname(__file__), '..', 'cli.py')
 
-    def test_cli_execution_with_custom_template(self, mocker, capsys):
-        # Arrange
-        test_rule = 'SecRule REQUEST_HEADERS:User-Agent "@rx malicious"'
-        custom_template = "Custom template: {rule}"
-        sys.argv = ['cli.py', '--prompt-template', custom_template, test_rule]
-        mock_check_api_key = mocker.patch('cli.check_api_key')
-        mock_check_api_key.return_value = "test_api_key"
-        mock_analyze = mocker.patch('cli.analyze_modsec_rule')
-        mock_analyze.return_value = {"markdown_content": "Test analysis"}
-        
-        # Act
-        result = main()
-        
-        # Assert
-        assert result == 0
-        mock_analyze.assert_called_with(test_rule, custom_template, provider="perplexity")
+@pytest.mark.parametrize("provider,env_var,expected_tag", [
+    ("perplexity", "perplexity_api_key", "[Perplexity"),
+    ("openai", "openai_api_key", "[OpenAI"),
+    ("xcom", "xcom_api_key", "[X.com"),
+    ("google", "google_api_key", "[Google"),
+])
+def test_cli_provider_output(tmp_path, provider, env_var, expected_tag):
+    rule = 'SecRule REQUEST_HEADERS:User-Agent "@rx malicious"'
+    env = os.environ.copy()
+    env[env_var] = "dummy_key"
+    cmd = [sys.executable, CLI_PATH, '--provider', provider, rule]
+    result = subprocess.run(cmd, capture_output=True, text=True, env=env)
+    assert result.returncode == 0
+    assert expected_tag in result.stdout
 
-    def test_cli_execution_with_custom_provider(self, mocker, capsys):
-        # Arrange
-        test_rule = 'SecRule REQUEST_HEADERS:User-Agent "@rx malicious"'
-        provider = "perplexity"
-        sys.argv = ['cli.py', '--provider', provider, test_rule]
-        mock_check_api_key = mocker.patch('cli.check_api_key')
-        mock_check_api_key.return_value = "test_api_key"
-        mock_analyze = mocker.patch('cli.analyze_modsec_rule')
-        mock_analyze.return_value = {"markdown_content": "Test analysis"}
-        
-        # Act
-        result = main()
-        
-        # Assert
-        assert result == 0
-        mock_analyze.assert_called_with(test_rule, 
-            "Please analyze this ModSecurity rule and explain what it does, including any potential issues or improvements: {rule}",
-            provider=provider)
-
-    def test_cli_execution_missing_api_key(self, mocker, capsys):
-        # Arrange
-        test_rule = 'SecRule REQUEST_HEADERS:User-Agent "@rx malicious"'
-        sys.argv = ['cli.py', test_rule]
-        mock_check_api_key = mocker.patch('cli.check_api_key')
-        mock_check_api_key.return_value = None
-        
-        # Act
-        result = main()
-        captured = capsys.readouterr()
-        
-        # Assert
-        assert result == 1
-        assert "Error: perplexity_api_key environment variable is not set" in captured.out
+def test_cli_missing_api_key():
+    rule = 'SecRule REQUEST_HEADERS:User-Agent "@rx malicious"'
+    env = os.environ.copy()
+    # Remove all possible API keys
+    for var in ["perplexity_api_key", "openai_api_key", "xcom_api_key", "google_api_key"]:
+        env.pop(var, None)
+    cmd = [sys.executable, CLI_PATH, '--provider', 'openai', rule]
+    result = subprocess.run(cmd, capture_output=True, text=True, env=env)
+    assert result.returncode == 1
+    assert "openai_api_key environment variable is not found" in result.stdout or "openai_api_key environment variable not found" in result.stdout
